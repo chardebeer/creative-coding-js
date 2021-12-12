@@ -1,19 +1,40 @@
 const canvasSketch = require('canvas-sketch');
 const random = require('canvas-sketch-util/random');
 const math = require('canvas-sketch-util/math')
+const tweakpane = require('tweakpane');
 
 const settings = {
   dimensions: [ 1080, 1080 ],
   animate: true
 };
 
+const params = {
+  cols: 10,
+  rows: 10,
+  scaleMin: 1,
+  scaleMax: 30,
+  freq: 0.001,
+  amp: 0.2,
+  animate: true,
+  frame: 0,
+  lineCap: "butt",
+  background: "#282a36",
+  color1: "#ff79c5",
+  color2: "#89f7fe"
+}
+
+
 const sketch = () => {
   return ({ context, width, height, frame }) => {
-    context.fillStyle = 'white';
+
+
+
+
+    context.fillStyle = params.background;
     context.fillRect(0, 0, width, height);
 
-    const cols = 10;
-    const rows = 10;
+    const cols = params.cols;
+    const rows = params.rows;
     const numCells = cols * rows;
 
     /*Grid Dimensions**/
@@ -29,7 +50,8 @@ const sketch = () => {
     const margy = (height - gridh) * 0.5;   //Margin on y-axis
 
 
-    for (let i = 0; i < numCells; i++){
+    let colourFill;
+    for (let i = 0; i < numCells; i++) {
       const col = i % cols;
       /* NOTE: The Math.floor() function returns the largest integer less than or equal to a given number.**/
       const row = Math.floor(i / cols);       //At every 4 steps grid row ++1
@@ -40,22 +62,44 @@ const sketch = () => {
       const w = cellw * 0.8;
       const h = cellh * 0.8;
 
+      /*The conditional (ternary) operator
+      a condition followed by a question mark ( ? ),
+      then an expression to execute if the condition is truthy followed by a colon ( : ),
+      and finally the expression to execute if the condition is falsy.
+      **/
+
+      const f = params.animate ? frame : params.frame;
+
       /* Randomness **/
-      const n = random.noise2D(x + frame * 10, y, 0.001);
-      const angle = n * Math.PI * 0.2;
+      // const n = random.noise2D(x + frame * 10, y, params.freq);
+
+      const n = random.noise3D(x, y, f * 10, params.freq);
+
+      const angle = n * Math.PI * params.amp;
 
       // const scale = (n * 0.5 + 0.5 ) * 30 ;
-      const scale = math.mapRange(n, -1, 1, 1,30);
+      const scale = math.mapRange(n, -1, 1, params.scaleMin, params.scaleMax);
 
       context.save();
+
+
+      const fill = context.createLinearGradient(1, 100, gridw * n, gridh * n);
+      fill.addColorStop(0, params.color1);
+      fill.addColorStop(1, params.color2);
 
       context.translate(x, y);
       context.translate(margx, margy);
       context.translate(cellw * 0.5, cellh * 0.5); //Get back to origin
 
+
       context.rotate(angle);
 
+
+      context.strokeStyle = fill;
+
       context.lineWidth = scale;
+      context.lineCap = params.lineCap;
+
 
       context.beginPath();
       context.moveTo(w * -0.5, 0); // Minus half of the width of the line
@@ -67,10 +111,35 @@ const sketch = () => {
       context.restore();
 
 
-
-
     }
   };
 };
+const createPane = () => {
+  const pane = new tweakpane.Pane();
+  let folder;
 
+  folder = pane.addFolder({title: "Grid"});
+  folder.addInput(params, 'lineCap', {options: {butt: "butt", round: "round", square: "square"}});
+  folder.addInput(params, 'cols', {min: 2, max: 50, step: 1});
+  folder.addInput(params, 'rows', {min: 2, max: 50, step: 1});
+  folder.addInput(params, 'scaleMin', {min: 1, max: 100});
+  folder.addInput(params, 'scaleMax', {min: 1, max: 100});
+
+  folder = pane.addFolder({title: "Noise"});
+  folder.addInput(params, 'freq', {min: -0.01, max: 0.01});
+  folder.addInput(params, 'amp', {min: -0.01, max: 0.01});
+  folder.addInput(params, 'animate');
+  folder.addInput(params, 'frame', {min: 0, max: 999});
+
+  folder = pane.addFolder({title: "Styles"});
+  folder.addInput(params, 'background');
+  folder.addInput(params, 'color1', {picker: 'inline', expanded: true,});
+  folder.addInput(params, 'color2', {picker: 'inline', expanded: true,});
+
+
+
+
+}
+
+createPane();
 canvasSketch(sketch, settings);
